@@ -15,27 +15,27 @@ typedef 1056 PixelsN;
 typedef UInt#(TAdd#(1,TLog#(PixelsN))) SZPixelsN;
 
 
-(* clock_prefix="OSC_50_B5B", reset_prefix="RESET_n" *)
 module mkSocKit(SocKit);
    Led led <- mkLed;
    Vga vga <- mkVga;
    Reg#(Bit#(1)) ledState <- mkReg(0);
-   Reg#(Bit#(8)) frameCounter <- mkReg(0);
+   Reg#(Bit#(6)) frameCounter <- mkReg(0);
+
    Reg#(SZPixelsN) pixelCount <- mkReg(0);
    Reg#(SZLinesN) lineCount <- mkReg(0);
    
-   rule doLed if ( lineCount == 628 );
+   rule doLed if ( lineCount == 628 && pixelCount == 1056 );
       if (frameCounter == 0) begin
-	 if (ledState == 0 )
+   	 if (ledState == 0 )
    	    ledState <= 1;
-	 if (ledState == 1)
-   	    ledState <= 0;
-	 led.setLed({0,ledState});
+   	 else
+	    ledState <= 0;
+   	 led.setLed({0,ledState});
       end
       if (frameCounter < 60)
-	 frameCounter <= frameCounter + 1;
+   	 frameCounter <= frameCounter + 1;
       if (frameCounter == 60)
-	 frameCounter <= 0;
+   	 frameCounter <= 0;
    endrule
    
    /* Vertical Timing */
@@ -54,6 +54,7 @@ module mkSocKit(SocKit);
    rule doVFrontPorch if (lineCount >= 627 && lineCount < 628 );
       vga.setVerticalSync(1);
    endrule
+   
    rule doVUpdate if (pixelCount == 0);
       if (lineCount == 628)
 	 lineCount <= 0;
@@ -101,7 +102,7 @@ module mkSocKit(SocKit);
       vga.setBlue(0);
    endrule
    rule doHUpdate;
-      if (pixelCount == 1056 )
+      if ( pixelCount == 1056 )
 	 pixelCount <= 0;
       else
 	 pixelCount <= pixelCount + 1;
@@ -110,4 +111,16 @@ module mkSocKit(SocKit);
 
    interface LedOutput ledout = led.ledout;
    interface VgaOutput vgaout = vga.vgaout;
+endmodule
+
+
+
+interface VgaClock;
+   interface Clock clock_vga;
+endinterface
+
+(* synthesize *)
+module mkVgaClock(VgaClock);
+   Clock current_clock <- exposeCurrentClock;
+   interface clock_vga = current_clock;
 endmodule
